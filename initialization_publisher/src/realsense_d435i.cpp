@@ -94,8 +94,8 @@ void image_callback(const sensor_msgs::ImageConstPtr &image_msg)
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "benchmark_publisher");
-    ros::NodeHandle n("~");
+    ros::init(argc, argv, "benchmark_publisher"); //初始化节点
+    ros::NodeHandle n("~"); //启动节点
 
     string cloud_name;
     n.param("cloud_name", cloud_name, std::string(""));
