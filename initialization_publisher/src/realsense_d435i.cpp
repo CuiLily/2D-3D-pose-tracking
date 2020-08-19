@@ -253,10 +253,10 @@ int main(int argc, char **argv)
 
             cv::solvePnP(model_points, capturePoint, camera_matrix, dist_coeffs, cv_rotation, cv_translation,false, CV_EPNP);
             cv::Mat cv_rot_mat;
-            Rodrigues(cv_rotation, cv_rot_mat);
+            Rodrigues(cv_rotation, cv_rot_mat); //把向量形式的旋转，转化为矩阵形式
             Eigen::Vector3d trans;
             Eigen::Matrix3d rot;
-            cv::cv2eigen(cv_rot_mat, rot);
+            cv::cv2eigen(cv_rot_mat, rot); //把旋转和平移的OpenCV矩阵转化为Eigen矩阵
             cv::cv2eigen(cv_translation, trans);
 
             baseRgt=body_R*c2b_R*rot; // T^vio_b*T^b_c*T^c_w*P_0
