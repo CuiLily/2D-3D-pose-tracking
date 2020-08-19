@@ -38,7 +38,7 @@ T readParam(ros::NodeHandle &n, std::string name)
     }
     return ans;
 }
-
+// ground truth的字段
 struct Data
 {
     Data(FILE *f)
@@ -80,12 +80,12 @@ void pub3dmap(const std_msgs::Header &header)
     if (init==SKIP+2)
     {
         ROS_INFO("publish 3D map");
-        pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZ>());
-        Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
-        transform.block<3, 3>(0, 0) = baseRgt.normalized().toRotationMatrix();
-        transform.block<3, 1>(0, 3) = baseTgt;
-        pcl::transformPointCloud(*cloud, *transformed_cloud, transform);
-        pcl_conversions::toPCL(header, transformed_cloud->header);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZ>()); //生成一个新的点云
+        Eigen::Matrix4d transform = Eigen::Matrix4d::Identity(); //transform初始化为单位阵
+        transform.block<3, 3>(0, 0) = baseRgt.normalized().toRotationMatrix(); //baseRgt原来是四元数，(归一化的四元数才能表示旋转）转换成旋转矩阵形式表达，填入transform
+        transform.block<3, 1>(0, 3) = baseTgt; //baseTgt填入transform
+        pcl::transformPointCloud(*cloud, *transformed_cloud, transform); //对cloud进行transform的变换，新点云是reansformed_cloud
+        pcl_conversions::toPCL(header, transformed_cloud->header); //ROS msg to PCLPointCloud2
         transformed_cloud->header.frame_id = "world";
         pub_3dmap.publish (transformed_cloud);
     }
@@ -96,7 +96,7 @@ void track_pose_callback(const nav_msgs::OdometryConstPtr &odom_msg)
     //ROS_INFO("odom callback!"); callback after tracking work, so no need for wait at the start.
     if (odom_msg->header.stamp.toSec() > benchmark.back().t)
       return;
-
+    // 循环变量copy_idx在63行定义了，初值为1
     for (; idx < static_cast<int>(benchmark.size()) && benchmark[copy_idx].t <= odom_msg->header.stamp.toSec(); copy_idx++)
         ;
     // bais transfrom between ground truth pose coordinate with point cloud frame
@@ -113,19 +113,19 @@ void track_pose_callback(const nav_msgs::OdometryConstPtr &odom_msg)
     odometry.child_frame_id = "world";
 
     Vector3d tmp_T = baseTgt + baseRgt * T;
-    odometry.pose.pose.position.x = tmp_T.x();
+    odometry.pose.pose.position.x = tmp_T.x(); //位置
     odometry.pose.pose.position.y = tmp_T.y();
     odometry.pose.pose.position.z = tmp_T.z();
 
     Quaterniond tmp_R = (baseRgt * Quaterniond(R)).normalized();
-    odometry.pose.pose.orientation.w = tmp_R.w();
+    odometry.pose.pose.orientation.w = tmp_R.w(); //四元数旋转
     odometry.pose.pose.orientation.x = tmp_R.x();
     odometry.pose.pose.orientation.y = tmp_R.y();
     odometry.pose.pose.orientation.z = tmp_R.z();
 
 
     Vector3d tmp_V = baseRgt * bias_R * Vector3d{benchmark[copy_idx - 1].vx, benchmark[copy_idx - 1].vy, benchmark[copy_idx - 1].vz};
-    odometry.twist.twist.linear.x = tmp_V.x();
+    odometry.twist.twist.linear.x = tmp_V.x(); //速度
     odometry.twist.twist.linear.y = tmp_V.y();
     odometry.twist.twist.linear.z = tmp_V.z();
     pub_odom.publish(odometry);
@@ -188,9 +188,9 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "benchmark_publisher");
     ros::NodeHandle n("~");
 
-    string csv_file = readParam<string>(n, "data_name");
+    string csv_file = readParam<string>(n, "data_name"); //读取csv文件
     std::cout << "load ground truth " << csv_file << std::endl;
-    FILE *f = fopen(csv_file.c_str(), "r");
+    FILE *f = fopen(csv_file.c_str(), "r"); //为了使用C语言中的 fopen() 函数打开文件，必须将 string 字符串转换为C风格的字符串. c_str()能将string 字符串转换为C风格的字符串
     if (f==NULL)
     {
       ROS_WARN("can't load ground truth; wrong path");
@@ -203,9 +203,9 @@ int main(int argc, char **argv)
         ROS_WARN("can't load ground truth; no data available");
     }
     while (!feof(f))
-        benchmark.emplace_back(f);
+        benchmark.emplace_back(f); //benchmark是vector容器， emplace_back()函数向容器中中加入临时对象， 临时对象原地构造，没有赋值或移动的操作。
     fclose(f);
-    benchmark.pop_back();
+    benchmark.pop_back(); //删除容器最后一个元素，容器大小-1
     ROS_INFO("Data loaded: %d", (int)benchmark.size());
 
     string cloud_name;
@@ -225,13 +225,13 @@ int main(int argc, char **argv)
     //initial transform from map to camera
     std::string config_file;
     n.getParam("config_file", config_file);
-    cv::FileStorage fsSettings(config_file, cv::FileStorage::READ);
+    cv::FileStorage fsSettings(config_file, cv::FileStorage::READ); //FileStorage类将各种OpenCV数据结构的数据存储为XML 或 YAML格式。
     if (!fsSettings.isOpened())
     {
         std::cerr << "ERROR: Wrong path to settings" << std::endl;
     }
     cv::Mat cv_bias_R, cv_bias_T;
-    fsSettings["initialRotation"] >> cv_bias_R;
+    fsSettings["initialRotation"] >> cv_bias_R; //将config文件的内容写到对应的变量里
     fsSettings["initialTranslation"] >> cv_bias_T;
     cv::cv2eigen(cv_bias_R, bias_R);
     cv::cv2eigen(cv_bias_T, bias_T);
