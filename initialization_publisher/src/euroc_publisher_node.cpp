@@ -141,9 +141,9 @@ void track_pose_callback(const nav_msgs::OdometryConstPtr &odom_msg)
 void odom_callback(const nav_msgs::OdometryConstPtr &odom_msg)
 {
     //ROS_INFO("odom callback!");
-    if (odom_msg->header.stamp.toSec() > benchmark.back().t)
+    if (odom_msg->header.stamp.toSec() > benchmark.back().t) //back()返回当前vector容器中末尾元素的引用。
       return;
-  
+    //循环变量idx在63行已经初始化为1
     for (; idx < static_cast<int>(benchmark.size()) && benchmark[idx].t <= odom_msg->header.stamp.toSec(); idx++)
         ;
 
